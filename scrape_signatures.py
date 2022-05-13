@@ -215,7 +215,7 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                                   additional_style)
 
                     elif "interface" in class_key:
-                        text = f"<<interface>><br />\n{class_key.split()[-1]}"
+                        text = f"<<interface>> {class_key.split()[-1]}"
                         additional_style = ""
 
                         if "static" in class_key:
