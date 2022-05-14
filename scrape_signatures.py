@@ -13,7 +13,13 @@ from html import escape
 # ]}
 
 VISIBILITY_NAMES = ["public", "internal", "protected", "private"]
-VISIBILITY_VARIANTS = [set([0]), set([2, 1]), set([1]), set([2]), set([3, 2]), set([3])]
+VISIBILITY_VARIANTS = [
+    set([0]),
+    set([2, 1]),
+    set([1]),
+    set([2]),
+    set([3, 2]),
+    set([3])]
 VISIBILITY_SYMBOLS = ["+", "#~", "~", "#", "-#", "-"]
 
 
@@ -158,6 +164,7 @@ def XML_value_class(
             &lt;/p&gt;"
     return value
 
+
 def XML_value_field(field: list[str]) -> str:
     value = "&lt;p style=&quot;margin-top:4px;margin-bottom:4px;margin-left:4px;&quot;&gt;"
     # field: [name:str, type:str, visibility:str, static:bool, default_value:str, modifiers:str]
@@ -167,7 +174,8 @@ def XML_value_field(field: list[str]) -> str:
         value += f"{field[2]} {field[0]}: {field[1]}{field[4]} {field[5]}"
     value += "&lt;/p&gt;"
     return value
-    
+
+
 def XML_value_method(method: list[str]) -> str:
     value = "&lt;p style=&quot;margin-top:4px;margin-bottom:4px;margin-left:4px;&quot;&gt;"
     # method: [name:str, parameters:str, return_type:str, visibility:str, static:bool, modifiers:str]
@@ -184,6 +192,7 @@ def XML_value_method(method: list[str]) -> str:
 
     value += "&lt;/p&gt;"
     return value
+
 
 def XML_element(element_id: int, parent_id: int, value: str,
                 x: int, y: int, width: int, height: int,
@@ -225,7 +234,7 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
     element_id = 2
     parent_id = 2
 
-    style_class:str
+    style_class: str
     style_member = "text;strokeColor=none;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;"
     style_line = "line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;"
 
@@ -255,9 +264,9 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                             if member_key == "Fields":
                                 # Fields
                                 for field_signature in member_signatures:
-                                    field_name:str
-                                    field_type:str
-                                    field_visibility:list[str]
+                                    field_name: str
+                                    field_type: str
+                                    field_visibility: list[str]
                                     field_static = "static" in field_signature
                                     field_default_value = ""
                                     field_modifiers = ""
@@ -267,13 +276,12 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                         r"(?:(?:internal|public|protected|private|readonly|static|override)\s)*(?:([^\s]+)\s+([^\s]+))\s*(?:=\s*(.*))?",
                                         field_signature)[0]
 
-
                                     field_name = field_search[1].strip(
                                     )
-                                    field_default_value = escape(field_search[2].strip(
-                                    ))
-                                    field_type = escape(field_search[0].strip(
-                                    ))
+                                    field_default_value = escape(
+                                        field_search[2].strip())
+                                    field_type = escape(
+                                        field_search[0].strip())
                                     print(field_name)
 
                                     if field_default_value:
@@ -284,10 +292,12 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
 
                                     # Field visibility
                                     v = []
-                                    for i, V in enumerate(VISIBILITY_NAMES):
+                                    for i, V in enumerate(
+                                            VISIBILITY_NAMES):
                                         if V in field_signature:
                                             v.append(i)
-                                    for i, V in enumerate(VISIBILITY_VARIANTS):
+                                    for i, V in enumerate(
+                                            VISIBILITY_VARIANTS):
                                         if set(v) == V:
                                             field_visibility = VISIBILITY_SYMBOLS[i]
 
@@ -314,15 +324,20 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                         field_modifiers = f"{{ {', '.join(property_modifier)} }}"
 
                                     # Append to main list
-                                    fields.append([field_name, field_type, field_visibility, field_static, field_default_value, field_modifiers])
+                                    fields.append(
+                                        [field_name, field_type,
+                                         field_visibility,
+                                         field_static,
+                                         field_default_value,
+                                         field_modifiers])
 
                             elif member_key == "Methods":
                                 # Methods
                                 for method_signature in member_signatures:
-                                    method_name:str
-                                    method_parameters:str
-                                    method_return_type:str
-                                    method_visibility:list[str]
+                                    method_name: str
+                                    method_parameters: str
+                                    method_return_type: str
+                                    method_visibility: list[str]
                                     method_static = "static" in method_signature
                                     method_modifiers = ""
 
@@ -336,22 +351,29 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
 
                                     print(method_identifier)
 
-                                    method_identifier_split = method_identifier.split("(", 1)
-                                    method_name = escape(escape(method_identifier_split[0]))
-                                    method_parameters = escape(escape(method_identifier_split[1][:-1]))
+                                    method_identifier_split = method_identifier.split(
+                                        "(", 1)
+                                    method_name = escape(
+                                        escape(
+                                            method_identifier_split
+                                            [0]))
+                                    method_parameters = escape(
+                                        escape(method_identifier_split[1][:-1]))
 
-                                    method_return_type = escape(escape(method_search[0].strip(
-                                    )))
+                                    method_return_type = escape(
+                                        escape(method_search[0].strip()))
 
                                     if method_return_type == "void" or method_name.startswith(class_name):
                                         method_return_type = ""
 
                                     # Method visibility
                                     v = []
-                                    for i, V in enumerate(VISIBILITY_NAMES):
+                                    for i, V in enumerate(
+                                            VISIBILITY_NAMES):
                                         if V in method_signature:
                                             v.append(i)
-                                    for i, V in enumerate(VISIBILITY_VARIANTS):
+                                    for i, V in enumerate(
+                                            VISIBILITY_VARIANTS):
                                         if set(v) == V:
                                             method_visibility = VISIBILITY_SYMBOLS[i]
 
@@ -371,36 +393,48 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                         method_modifiers += f"{{ {', '.join(property_modifier)} }}"
 
                                     # Append to main list
-                                    methods.append([method_name, method_parameters, method_return_type, method_visibility, method_static, method_modifiers])
-
+                                    methods.append(
+                                        [method_name,
+                                         method_parameters,
+                                         method_return_type,
+                                         method_visibility,
+                                         method_static,
+                                         method_modifiers])
 
                     # Sort members by visibility
-                    fields.sort(key=lambda x: VISIBILITY_SYMBOLS.index(x[2]))
-                    methods.sort(key=lambda x: VISIBILITY_SYMBOLS.index(x[3]))
+                    fields.sort(
+                        key=lambda x: VISIBILITY_SYMBOLS.index(x[2]))
+                    methods.sort(
+                        key=lambda x: VISIBILITY_SYMBOLS.index(x[3]))
 
                     # Dimensions of diagram
                     total_height = 0
                     if is_interface:
-                        total_height += line_height + (line_height - 2 * y_margin)
+                        total_height += line_height + (
+                            line_height - 2 * y_margin)
                     else:
                         total_height += line_height
                     if fields:
                         total_height += len(fields) * line_height
                     if methods:
                         if fields:
-                            total_height += rule_height + len(methods) * line_height
-                        else: 
+                            total_height += rule_height + \
+                                len(methods) * line_height
+                        else:
                             total_height += len(methods) * line_height
 
                     # Class/interface
-                    value_class = XML_value_class(class_name, is_interface, is_abstract, is_static)
+                    value_class = XML_value_class(
+                        class_name, is_interface, is_abstract, is_static)
 
                     if is_interface:
                         style_class = "swimlane;childLayout=stackLayout;horizontal=1;startSize=36;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;"
                     else:
                         style_class = "swimlane;childLayout=stackLayout;horizontal=1;startSize=22;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;"
 
-                    OUTPUT_XML += XML_element(element_id, 1, value_class, x, y, width, total_height, style_class)
+                    OUTPUT_XML += XML_element(element_id, 1,
+                                              value_class, x, y, width,
+                                              total_height, style_class)
                     if is_interface:
                         relative_y += line_height + 14
                     else:
@@ -408,26 +442,40 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
 
                     parent_id = element_id
                     element_id += 1
-                    
+
                     # Fields and methods
                     for field in fields:
                         value_field = XML_value_field(field)
-                        OUTPUT_XML += XML_element(element_id, parent_id, value_field, relative_x, relative_y, width, line_height, style_member)
+                        OUTPUT_XML += XML_element(
+                            element_id, parent_id, value_field,
+                            relative_x, relative_y, width, line_height,
+                            style_member)
                         relative_y += line_height
                         element_id += 1
-                    
+
                     if methods:
                         if fields:
-                            OUTPUT_XML += XML_element(element_id, parent_id, "", relative_x, relative_y, width, rule_height, style_line)
+                            OUTPUT_XML += XML_element(element_id,
+                                                      parent_id, "",
+                                                      relative_x,
+                                                      relative_y, width,
+                                                      rule_height,
+                                                      style_line)
                             relative_y += rule_height
                             element_id += 1
 
                         for method in methods:
                             value_method = XML_value_method(method)
-                            OUTPUT_XML += XML_element(element_id, parent_id, value_method, relative_x, relative_y, width, line_height, style_member)
+                            OUTPUT_XML += XML_element(element_id,
+                                                      parent_id,
+                                                      value_method,
+                                                      relative_x,
+                                                      relative_y, width,
+                                                      line_height,
+                                                      style_member)
                             relative_y += line_height
                             element_id += 1
-                        
+
                     y += total_height + 20
 
     OUTPUT_XML += "      </root>\n \
@@ -462,7 +510,6 @@ def main(
 
 
 if __name__ == "__main__":
-    root = find_files(
-        r".\\path\\to\\C#\\project")
+    root = find_files(r".\\path\\to\\C#\\project")
 
     main(root, False, False, True)
