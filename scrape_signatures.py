@@ -138,11 +138,11 @@ def XML_value(
 
     title_with_styles: str
     if static and abstract:
-        title_with_styles = f"&lt;u&gt;&lt;i&gt;{title}&lt;i&gt;&lt;/u&gt;"
+        title_with_styles = f"&lt;u&gt;&lt;i&gt;{title}&lt;/i&gt;&lt;/u&gt;"
     elif static:
         title_with_styles = f"&lt;u&gt;{title}&lt;/u&gt;"
     elif abstract:
-        title_with_styles = f"&lt;i&gt;{title}&lt;i&gt;"
+        title_with_styles = f"&lt;i&gt;{title}&lt;/i&gt;"
     else:
         title_with_styles = title
 
@@ -183,9 +183,16 @@ def XML_value(
         for method in methods:
             # method: [name:str, parameters:str, return_type:str, visibility:str, static:bool, modifiers:str]
             if method[4]:
-                value += f"{method[3]} &lt;u&gt;{method[0]}&lt;/u&gt;({method[1]}): {method[2]} {method[5]}"
+                if method[2]:
+                    value += f"{method[3]} &lt;u&gt;{method[0]}&lt;/u&gt;({method[1]}): {method[2]} {method[5]}"
+                else:
+                    value += f"{method[3]} &lt;u&gt;{method[0]}&lt;/u&gt;({method[1]}) {method[5]}"
             else:
-                value += f"{method[3]} {method[0]}({method[1]}): {method[2]} {method[5]}"
+                if method[2]:
+                    value += f"{method[3]} {method[0]}({method[1]}): {method[2]} {method[5]}"
+                else:
+                    value += f"{method[3]} {method[0]}({method[1]}) {method[5]}"
+
             value += "&lt;br&gt;"
 
         value += "&lt;/p&gt;"
@@ -265,12 +272,14 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                         r"(?:(?:internal|public|protected|private|readonly|static|override)\s)*(?:([^\s]+)\s+([^\s]+))\s*(?:=\s*(.*))?",
                                         field_signature)[0]
 
+
                                     field_name = field_search[1].strip(
                                     )
                                     field_default_value = escape(field_search[2].strip(
                                     ))
                                     field_type = escape(field_search[0].strip(
                                     ))
+                                    print(field_name)
 
                                     if field_default_value:
                                         if "new" in field_default_value and "()" in field_default_value:
@@ -324,18 +333,20 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
 
                                     # Method name
                                     method_search = findall(
-                                        r"(?:(?:internal|public|protected|private|readonly|static|override|virtual|abstract)\s)*(?:([^\s()]+)\s+([^\n:]+))",
+                                        r"(?:(?:internal|public|protected|private|readonly|static|override|virtual|abstract|delegate)\s)*(?:([^\s()]+)\s+([^\n:]+))",
                                         method_signature)[0]
 
                                     method_identifier = method_search[1].strip(
                                     )
 
-                                    method_identifier_split = method_identifier.split("(", 1)
-                                    method_name = escape(method_identifier_split[0])
-                                    method_parameters = escape(method_identifier_split[1][:-1])
+                                    print(method_identifier)
 
-                                    method_return_type = escape(method_search[0].strip(
-                                    ))
+                                    method_identifier_split = method_identifier.split("(", 1)
+                                    method_name = escape(escape(method_identifier_split[0]))
+                                    method_parameters = escape(escape(method_identifier_split[1][:-1]))
+
+                                    method_return_type = escape(escape(method_search[0].strip(
+                                    )))
 
                                     if method_return_type == "void" or method_name.startswith(class_name):
                                         method_return_type = ""
@@ -357,9 +368,6 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                     override = "override" in method_signature
 
                                     property_modifier = []
-                                    if readonly:
-                                        property_modifier.append(
-                                            "readOnly")
                                     if override:
                                         property_modifier.append(
                                             "redefines")
