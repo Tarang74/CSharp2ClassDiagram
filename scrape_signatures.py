@@ -130,10 +130,8 @@ def convert_to_md(
     return OUTPUT_MD
 
 
-def XML_value(
-        title: str, interface: bool, abstract: bool, static: bool,
-        fields: list[list[str]],
-        methods: list[list[str]]) -> str:
+def XML_value_class(
+        title: str, interface: bool, abstract: bool, static: bool) -> str:
     value = ""
 
     title_with_styles: str
@@ -147,7 +145,7 @@ def XML_value(
         title_with_styles = title
 
     if interface:
-        value = f"&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt; \
+        value = f"&lt;p style=&quot;margin-top:4px;margin-bottom:4px;text-align:center;&quot;&gt; \
                 &lt;i&gt; \
                     &amp;lt;&amp;lt;Interface&amp;gt;&amp;gt; \
                 &lt;/i&gt; \
@@ -155,53 +153,42 @@ def XML_value(
                 &lt;b&gt;{title_with_styles}&lt;/b&gt; \
             &lt;/p&gt;"
     else:
-        value = f"&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt; \
+        value = f"&lt;p style=&quot;margin-top:4px;margin-bottom:4px;text-align:center;&quot;&gt; \
                 &lt;b&gt;{title_with_styles}&lt;/b&gt; \
             &lt;/p&gt;"
-
-    if fields:
-        # Horizontal rule
-        value += "&lt;hr size=&quot;1&quot;&gt;"
-
-        # Fields
-        value += "&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;"
-        for field in fields:
-            # field: [name:str, type:str, visibility:str, static:bool, default_value:str, modifiers:str]
-            if field[3]:
-                value += f"{field[2]} &lt;u&gt;{field[0]}&lt;/u&gt;: {field[1]}{field[4]} {field[5]}"
-            else:
-                value += f"{field[2]} {field[0]}: {field[1]}{field[4]} {field[5]}"
-            value += "&lt;br&gt;"
-        value += "&lt;/p&gt;"
-
-    if methods:
-        # Horizontal rule
-        value += "&lt;hr size=&quot;1&quot;&gt;"
-
-        # Methods
-        value += "&lt;p style=&quot;margin:0px;margin-left:4px;margin-bottom:4px;&quot;&gt;"
-        for method in methods:
-            # method: [name:str, parameters:str, return_type:str, visibility:str, static:bool, modifiers:str]
-            if method[4]:
-                if method[2]:
-                    value += f"{method[3]} &lt;u&gt;{method[0]}&lt;/u&gt;({method[1]}): {method[2]} {method[5]}"
-                else:
-                    value += f"{method[3]} &lt;u&gt;{method[0]}&lt;/u&gt;({method[1]}) {method[5]}"
-            else:
-                if method[2]:
-                    value += f"{method[3]} {method[0]}({method[1]}): {method[2]} {method[5]}"
-                else:
-                    value += f"{method[3]} {method[0]}({method[1]}) {method[5]}"
-
-            value += "&lt;br&gt;"
-
-        value += "&lt;/p&gt;"
     return value
 
+def XML_value_field(field: list[str]) -> str:
+    value = "&lt;p style=&quot;margin-top:4px;margin-bottom:4px;margin-left:4px;&quot;&gt;"
+    # field: [name:str, type:str, visibility:str, static:bool, default_value:str, modifiers:str]
+    if field[3]:
+        value += f"{field[2]} &lt;u&gt;{field[0]}&lt;/u&gt;: {field[1]}{field[4]} {field[5]}"
+    else:
+        value += f"{field[2]} {field[0]}: {field[1]}{field[4]} {field[5]}"
+    value += "&lt;/p&gt;"
+    return value
+    
+def XML_value_method(method: list[str]) -> str:
+    value = "&lt;p style=&quot;margin-top:4px;margin-bottom:4px;margin-left:4px;&quot;&gt;"
+    # method: [name:str, parameters:str, return_type:str, visibility:str, static:bool, modifiers:str]
+    if method[4]:
+        if method[2]:
+            value += f"{method[3]} &lt;u&gt;{method[0]}&lt;/u&gt;({method[1]}): {method[2]} {method[5]}"
+        else:
+            value += f"{method[3]} &lt;u&gt;{method[0]}&lt;/u&gt;({method[1]}) {method[5]}"
+    else:
+        if method[2]:
+            value += f"{method[3]} {method[0]}({method[1]}): {method[2]} {method[5]}"
+        else:
+            value += f"{method[3]} {method[0]}({method[1]}) {method[5]}"
 
-def XML_element(element_id: int, value: str,
-                x: int, y: int, width: int, height: int) -> str:
-    return f"        <mxCell id=\"{element_id}\" value=\"{value}\" style=\"verticalAlign=top;align=left;overflow=fill;fontSize=12;fontFamily=Helvetica;html=1;\" parent=\"1\" vertex=\"1\">\n \
+    value += "&lt;/p&gt;"
+    return value
+
+def XML_element(element_id: int, parent_id: int, value: str,
+                x: int, y: int, width: int, height: int,
+                styles: str = "") -> str:
+    return f"        <mxCell id=\"{element_id}\" value=\"{value}\" style=\"vertical-align=middle;align=left;overflow=fill;fontSize=12;fontFamily=Helvetica;html=1;{styles}\" parent=\"{parent_id}\" vertex=\"1\">\n \
           <mxGeometry x=\"{x}\" y=\"{y}\" width=\"{width}\" height=\"{height}\" as=\"geometry\" />\n \
        </mxCell>\n"
 
@@ -231,16 +218,24 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
 
     # Height of various elements
     y_margin = 4
-    rule_height = 13
-    line_height = 14.391
+    line_height = 22
+    rule_height = 1
 
+    # Keep track of parent
     element_id = 2
+    parent_id = 2
+
+    style_class:str
+    style_member = "text;strokeColor=none;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;"
+    style_line = "line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;"
 
     for namespaces in OUTPUT_JSON["Class Diagram"]:
         for namespace_key, classes in namespaces.items():
             for class_ in classes:
                 for class_key, members in class_.items():
                     print("-" * 40)
+                    relative_x = 0
+                    relative_y = 0
 
                     # Class/interface info
                     class_name = class_key.split()[-1]
@@ -383,24 +378,57 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                     fields.sort(key=lambda x: VISIBILITY_SYMBOLS.index(x[2]))
                     methods.sort(key=lambda x: VISIBILITY_SYMBOLS.index(x[3]))
 
-                    value = XML_value(class_name, is_interface, is_abstract, is_static, fields, methods)
-
                     # Dimensions of diagram
-                    total_height = y_margin * 2
+                    total_height = 0
                     if is_interface:
-                        total_height += line_height * 2
+                        total_height += line_height + (line_height - 2 * y_margin)
                     else:
                         total_height += line_height
-
                     if fields:
-                        total_height += rule_height + len(fields) * line_height
+                        total_height += len(fields) * line_height
                     if methods:
-                        total_height += rule_height + len(methods) * line_height
+                        if fields:
+                            total_height += rule_height + len(methods) * line_height
+                        else: 
+                            total_height += len(methods) * line_height
 
-                    OUTPUT_XML += XML_element(element_id, value, x, y, width, total_height)
+                    # Class/interface
+                    value_class = XML_value_class(class_name, is_interface, is_abstract, is_static)
 
+                    if is_interface:
+                        style_class = "swimlane;childLayout=stackLayout;horizontal=1;startSize=36;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;"
+                    else:
+                        style_class = "swimlane;childLayout=stackLayout;horizontal=1;startSize=22;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;"
+
+                    OUTPUT_XML += XML_element(element_id, 1, value_class, x, y, width, total_height, style_class)
+                    if is_interface:
+                        relative_y += line_height + 14
+                    else:
+                        relative_y += line_height
+
+                    parent_id = element_id
                     element_id += 1
-                    y += total_height + 50
+                    
+                    # Fields and methods
+                    for field in fields:
+                        value_field = XML_value_field(field)
+                        OUTPUT_XML += XML_element(element_id, parent_id, value_field, relative_x, relative_y, width, line_height, style_member)
+                        relative_y += line_height
+                        element_id += 1
+                    
+                    if methods:
+                        if fields:
+                            OUTPUT_XML += XML_element(element_id, parent_id, "", relative_x, relative_y, width, rule_height, style_line)
+                            relative_y += rule_height
+                            element_id += 1
+
+                        for method in methods:
+                            value_method = XML_value_method(method)
+                            OUTPUT_XML += XML_element(element_id, parent_id, value_method, relative_x, relative_y, width, line_height, style_member)
+                            relative_y += line_height
+                            element_id += 1
+                        
+                    y += total_height + 20
 
     OUTPUT_XML += "      </root>\n \
     </mxGraphModel>\n \
