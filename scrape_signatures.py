@@ -276,7 +276,7 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                         if "new" in field_default_value and "()" in field_default_value:
                                             field_default_value = f" = {field_type}"
                                         else:
-                                            field_default_value += f" = {field_default_value}"
+                                            field_default_value = f" = {field_default_value}"
 
                                     # Field visibility
                                     v = []
