@@ -3,7 +3,6 @@ from os import walk
 from json import dumps
 from html import escape
 
-
 # {"Class Diagram": [
 #     {"Namespace_name": [
 #         {"Class_name": [
@@ -12,6 +11,10 @@ from html import escape
 #         ]}, ...
 #     ]}, ...
 # ]}
+
+VISIBILITY_NAMES = ["public", "internal", "protected", "private"]
+VISIBILITY_VARIANTS = [set([0]), set([2, 1]), set([1]), set([2]), set([3, 2]), set([3])]
+VISIBILITY_SYMBOLS = ["+", "#~", "~", "#", "-#", "-"]
 
 
 def find_index(l: list[dict[str, list]], key: str) -> int:
@@ -127,26 +130,73 @@ def convert_to_md(
     return OUTPUT_MD
 
 
-def XML_element(element_id: int, parent_id: int, text: str,
-                x: int, y: int, width: int, height: int,
-                style: str, additional_style: str = "") -> str:
-    return f"        <mxCell id=\"{element_id}\" value=\"{escape(text)}\" style=\"{style}{additional_style}\" parent=\"{parent_id}\" vertex=\"1\">\n \
+def XML_value(
+        title: str, interface: bool, abstract: bool, static: bool,
+        fields: list[list[str]],
+        methods: list[list[str]]) -> str:
+    value = ""
+
+    title_with_styles: str
+    if static and abstract:
+        title_with_styles = f"&lt;u&gt;&lt;i&gt;{title}&lt;i&gt;&lt;/u&gt;"
+    elif static:
+        title_with_styles = f"&lt;u&gt;{title}&lt;/u&gt;"
+    elif abstract:
+        title_with_styles = f"&lt;i&gt;{title}&lt;i&gt;"
+    else:
+        title_with_styles = title
+
+    if interface:
+        value = f"&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt; \
+                &lt;i&gt; \
+                    &amp;lt;&amp;lt;Interface&amp;gt;&amp;gt; \
+                &lt;/i&gt; \
+                &lt;br&gt; \
+                &lt;b&gt;{title_with_styles}&lt;/b&gt; \
+            &lt;/p&gt;"
+    else:
+        value = f"&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt; \
+                &lt;b&gt;{title_with_styles}&lt;/b&gt; \
+            &lt;/p&gt;"
+
+    if fields:
+        # Horizontal rule
+        value += "&lt;hr size=&quot;1&quot;&gt;"
+
+        # Fields
+        value += "&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;"
+        for field in fields:
+            # field: [name:str, type:str, visibility:str, static:bool, default_value:str, modifiers:str]
+            if field[3]:
+                value += f"{field[2]} &lt;u&gt;{field[0]}&lt;/u&gt;: {field[1]}{field[4]} {field[5]}"
+            else:
+                value += f"{field[2]} {field[0]}: {field[1]}{field[4]} {field[5]}"
+            value += "&lt;br&gt;"
+        value += "&lt;/p&gt;"
+
+    if methods:
+        # Horizontal rule
+        value += "&lt;hr size=&quot;1&quot;&gt;"
+
+        # Methods
+        value += "&lt;p style=&quot;margin:0px;margin-left:4px;margin-bottom:4px;&quot;&gt;"
+        for method in methods:
+            # method: [name:str, parameters:str, return_type:str, visibility:str, static:bool, modifiers:str]
+            if method[4]:
+                value += f"{method[3]} &lt;u&gt;{method[0]}&lt;/u&gt;({method[1]}): {method[2]} {method[5]}"
+            else:
+                value += f"{method[3]} {method[0]}({method[1]}): {method[2]} {method[5]}"
+            value += "&lt;br&gt;"
+
+        value += "&lt;/p&gt;"
+    return value
+
+
+def XML_element(element_id: int, value: str,
+                x: int, y: int, width: int, height: int) -> str:
+    return f"        <mxCell id=\"{element_id}\" value=\"{value}\" style=\"verticalAlign=top;align=left;overflow=fill;fontSize=12;fontFamily=Helvetica;html=1;\" parent=\"1\" vertex=\"1\">\n \
           <mxGeometry x=\"{x}\" y=\"{y}\" width=\"{width}\" height=\"{height}\" as=\"geometry\" />\n \
        </mxCell>\n"
-
-
-def count_members(l: list[dict[str, list[str]]]) -> list[int]:
-    fields = 0
-    methods = 0
-
-    for member in l:
-        for member_key, member_items in member.items():
-            if member_key == "Fields":
-                fields = len(member_items)
-            elif member_key == "Methods":
-                methods = len(member_items)
-
-    return (fields, methods)
 
 
 def convert_to_XML(OUTPUT_JSON: dict[str, list[
@@ -158,8 +208,8 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
 ]]
 ) -> str:
     OUTPUT_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<mxfile host="app.diagrams.net" modified="2022-05-13T08:33:25.475Z" type="device" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36" version="18.0.3">
-  <diagram>
+<mxfile host="app.diagrams.net" modified="2022-05-13T08:33:25.475Z" type="device" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36" version="18.0.3" etag="3d7OXHVQLkoMDTyIV0tP">
+  <diagram id="Z7huS8_CQf_3WdyO0GcB">
     <mxGraphModel dx="2000" dy="2000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" math="0" shadow="0">
       <root>
         <mxCell id="0" />
@@ -169,187 +219,180 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
     x = 100
     y = 100
 
-    height = 26
+    # Choose arbitrary width
     width = 400
-    line_height = 8
 
-    style_class = "swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;"
-    style_interface = "swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;"
-    style_member = "text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;"
-    style_line = "line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;"
+    # Height of various elements
+    y_margin = 4
+    rule_height = 13
+    line_height = 14.391
 
-    style_bold = "fontStyle=1;"
-    style_italics = "fontStyle=2;"
-    style_underline = "fontStyle=4;"
-
-    element_count = 2
-    element_parent_count = 2
+    element_id = 2
 
     for namespaces in OUTPUT_JSON["Class Diagram"]:
         for namespace_key, classes in namespaces.items():
             for class_ in classes:
                 for class_key, members in class_.items():
-                    print("-"*40)
-                    (fields, methods) = count_members(members)
-                    if (fields == 0 or methods == 0):
-                        total_height = (1 + fields + methods) * height
-                    else:
-                        total_height = (1 + fields + methods) * height + line_height
+                    print("-" * 40)
 
-                    current_class = ""
-                    
-                    if "class" in class_key:
-                        text = class_key.split()[-1]
-                        additional_style = ""
-                            
-                        if "static" in class_key:
-                            additional_style += style_underline
-                        elif "abstract" in class_key:
-                            additional_style += style_italics
+                    # Class/interface info
+                    class_name = class_key.split()[-1]
+                    is_interface = "interface" in class_key
+                    is_static = "static" in class_key
+                    is_abstract = "abstract" in class_key
 
-                        current_class = text
-                        print(text)
-                        OUTPUT_XML += XML_element(element_count, 1,
-                                                  text, x, y, width,
-                                                  total_height, style_class,
-                                                  additional_style)
+                    print(class_name)
 
-                    elif "interface" in class_key:
-                        text = f"<<interface>> {class_key.split()[-1]}"
-                        additional_style = ""
+                    # field: [name:str, type:str, visibility:str, static:bool, default_value:str, modifiers:str]
+                    fields = []
+                    # method: [name:str, parameters:str, return_type:str, visibility:str, static:bool, modifiers:str]
+                    methods = []
 
-                        if "static" in class_key:
-                            additional_style += style_underline
-                        elif "abstract" in class_key:
-                            additional_style += style_italics
-
-                        current_class = text
-                        print(text)
-                        OUTPUT_XML += XML_element(element_count, 1,
-                                                  text, x, y, width,
-                                                  total_height,
-                                                  style_interface,
-                                                  additional_style)
-
-                    y += height
-                    element_count += 1
-
-                    line_drawn = False
                     for member in members:
                         for member_key, member_signatures in member.items():
-                            VISIBILITY = ["public", "internal", "protected", "private"]
-                            VISIBILITY_SYMBOL = ['+', '~', '#', '-']
                             if member_key == "Fields":
+                                # Fields
                                 for field_signature in member_signatures:
-                                    text = ""
+                                    field_name:str
+                                    field_type:str
+                                    field_visibility:list[str]
+                                    field_static = "static" in field_signature
+                                    field_default_value = ""
+                                    field_modifiers = ""
 
-                                    # Visibility
-                                    visibility = [x in field_signature for x in VISIBILITY]
-                                    for i, v in enumerate(visibility):
-                                        if v:
-                                            text += VISIBILITY_SYMBOL[i]
-                                    
-                                    # Field
-                                    field_search = findall(r"(?:(?:internal|public|protected|private|readonly|static|override)\s)*(?:([^\s]+)\s+([^\s]+))\s*(?:=\s*(.*))?", field_signature)[0]
-                                    field_identifier = field_search[1].strip()
-                                    field_default_value = field_search[2].strip()
-                                    field_type = field_search[0].strip()
+                                    # Field name
+                                    field_search = findall(
+                                        r"(?:(?:internal|public|protected|private|readonly|static|override)\s)*(?:([^\s]+)\s+([^\s]+))\s*(?:=\s*(.*))?",
+                                        field_signature)[0]
 
-                                    text += f"{field_identifier} : {field_type}"
+                                    field_name = field_search[1].strip(
+                                    )
+                                    field_default_value = escape(field_search[2].strip(
+                                    ))
+                                    field_type = escape(field_search[0].strip(
+                                    ))
 
                                     if field_default_value:
                                         if "new" in field_default_value and "()" in field_default_value:
-                                            text += f" = {field_type}"
+                                            field_default_value = f" = {field_type}"
                                         else:
-                                            text += f" = {field_default_value}"
+                                            field_default_value += f" = {field_default_value}"
 
-                                    # Property modifier
-                                    abstract = any(x in field_signature for x in ["abstract", "virtual"])
+                                    # Field visibility
+                                    v = []
+                                    for i, V in enumerate(VISIBILITY_NAMES):
+                                        if V in field_signature:
+                                            v.append(i)
+                                    for i, V in enumerate(VISIBILITY_VARIANTS):
+                                        if set(v) == V:
+                                            field_visibility = VISIBILITY_SYMBOLS[i]
+
+                                    # Property modifiers
+                                    abstract = any(
+                                        x in field_signature
+                                        for x
+                                        in ["abstract", "virtual"])
                                     override = "override" in field_signature
                                     readonly = "readonly" in field_signature
 
                                     property_modifier = []
                                     if abstract:
-                                        property_modifier.append("abstract")
+                                        property_modifier.append(
+                                            "abstract")
                                     if readonly:
-                                        property_modifier.append("readOnly")
+                                        property_modifier.append(
+                                            "readOnly")
                                     if override:
-                                        property_modifier.append("redefines")
+                                        property_modifier.append(
+                                            "redefines")
 
                                     if property_modifier:
-                                        text += f" {{ {', '.join(property_modifier)} }}"
+                                        field_modifiers = f"{{ {', '.join(property_modifier)} }}"
 
-                                    additional_style = ""
-                                    if "static" in field_signature:
-                                        additional_style += style_underline
-                                    
-                                    print(text)
-                                    OUTPUT_XML += XML_element(
-                                        element_count, element_parent_count, text, x, y,
-                                        width, height, style_member,
-                                        additional_style)
-                                    
-                                    y += height
-                                    element_count += 1
+                                    # Append to main list
+                                    fields.append([field_name, field_type, field_visibility, field_static, field_default_value, field_modifiers])
 
                             elif member_key == "Methods":
+                                # Methods
                                 for method_signature in member_signatures:
-                                    text = ""
+                                    method_name:str
+                                    method_parameters:str
+                                    method_return_type:str
+                                    method_visibility:list[str]
+                                    method_static = "static" in method_signature
+                                    method_modifiers = ""
 
-                                    # Visibility
-                                    visibility = [x in method_signature for x in VISIBILITY]
-                                    for i, v in enumerate(visibility):
-                                        if v:
-                                            text += VISIBILITY_SYMBOL[i]
+                                    # Method name
+                                    method_search = findall(
+                                        r"(?:(?:internal|public|protected|private|readonly|static|override|virtual|abstract)\s)*(?:([^\s()]+)\s+([^\n:]+))",
+                                        method_signature)[0]
 
-                                    method_search = findall(r"(?:(?:internal|public|protected|private|readonly|static|override|virtual|abstract)\s)*(?:([^\s()]+)\s+([^\n:]+))", method_signature)[0]
-                                    method_identifier = method_search[1].strip()
-                                    method_return_type = method_search[0].strip()
+                                    method_identifier = method_search[1].strip(
+                                    )
 
-                                    if method_return_type == "void" or method_identifier.startswith(current_class):
-                                        text += f"{method_identifier}"
-                                    else:
-                                        text += f"{method_identifier} : {method_return_type}"
+                                    method_identifier_split = method_identifier.split("(", 1)
+                                    method_name = escape(method_identifier_split[0])
+                                    method_parameters = escape(method_identifier_split[1][:-1])
 
-                                    # Property modifier
-                                    abstract = any(x in method_signature for x in ["abstract", "virtual"])
+                                    method_return_type = escape(method_search[0].strip(
+                                    ))
+
+                                    if method_return_type == "void" or method_name.startswith(class_name):
+                                        method_return_type = ""
+
+                                    # Method visibility
+                                    v = []
+                                    for i, V in enumerate(VISIBILITY_NAMES):
+                                        if V in method_signature:
+                                            v.append(i)
+                                    for i, V in enumerate(VISIBILITY_VARIANTS):
+                                        if set(v) == V:
+                                            method_visibility = VISIBILITY_SYMBOLS[i]
+
+                                    # Property modifiers
+                                    abstract = any(
+                                        x in method_signature
+                                        for x
+                                        in ["abstract", "virtual"])
                                     override = "override" in method_signature
-                                    
+
                                     property_modifier = []
                                     if readonly:
-                                        property_modifier.append("readOnly")
+                                        property_modifier.append(
+                                            "readOnly")
                                     if override:
-                                        property_modifier.append("redefines")
+                                        property_modifier.append(
+                                            "redefines")
 
                                     if property_modifier:
-                                        text += f" {{ {', '.join(property_modifier)} }}"
+                                        method_modifiers += f"{{ {', '.join(property_modifier)} }}"
 
-                                    additional_style = ""
-                                    if "static" in method_signature:
-                                        additional_style += style_underline
+                                    # Append to main list
+                                    methods.append([method_name, method_parameters, method_return_type, method_visibility, method_static, method_modifiers])
 
-                                    print(text)
-                                    OUTPUT_XML += XML_element(
-                                        element_count, element_parent_count, text, x, y,
-                                        width, height, style_member,
-                                        additional_style)
-                                    
-                                    y += height
-                                    element_count += 1
-                                element_count += 1
 
-                        if fields and methods and not line_drawn:
-                            line_drawn = True
-                            OUTPUT_XML += XML_element(element_count,
-                                                    element_parent_count,
-                                                    "", x, y, width,
-                                                    line_height,
-                                                    style_line)
-                            y += line_height
-                            element_count += 1
+                    # Sort members by visibility
+                    fields.sort(key=lambda x: VISIBILITY_SYMBOLS.index(x[2]))
+                    methods.sort(key=lambda x: VISIBILITY_SYMBOLS.index(x[3]))
 
-                y += 50
-                element_parent_count = element_count
+                    value = XML_value(class_name, is_interface, is_abstract, is_static, fields, methods)
+
+                    # Dimensions of diagram
+                    total_height = y_margin * 2
+                    if is_interface:
+                        total_height += line_height * 2
+                    else:
+                        total_height += line_height
+
+                    if fields:
+                        total_height += rule_height + len(fields) * line_height
+                    if methods:
+                        total_height += rule_height + len(methods) * line_height
+
+                    OUTPUT_XML += XML_element(element_id, value, x, y, width, total_height)
+
+                    element_id += 1
+                    y += total_height + 50
 
     OUTPUT_XML += "      </root>\n \
     </mxGraphModel>\n \
