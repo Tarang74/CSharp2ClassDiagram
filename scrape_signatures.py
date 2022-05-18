@@ -30,10 +30,13 @@ def find_index(l: list[dict[str, list]], key: str) -> int:
 
 
 def find_files(directory: str) -> list[str]:
+    if not directory: 
+        raise ValueError("No directory was supplied.")
+
     list_of_files = []
     for path, subdirs, files in walk(directory):
         for name in files:
-            if name.endswith(".cs"):
+            if name.endswith(".cs") and not path.startswith(f"{directory}\obj"):
                 list_of_files.append(f"{path}\{name}")
 
     return list_of_files
@@ -73,7 +76,7 @@ def scrape(filename: str, OUTPUT_JSON: dict[str, list[dict[str, list[dict[str, l
     field_and_method_counter = 0
 
     fields = findall(
-        r"(?:public\s|private\s|protected\s|internal\s)\s*(?:readonly\s|static\s)*(?:(?!class)(?!interface)[\w<>]+)\s+(?:(?!set)\w+)(?:\s*=\s*(?:new\s*)?[\w<>\(\)\"\/\s/.]*)?(?=;|\s*\n*\{)",
+        r"(?:public\s|private\s|protected\s|internal\s)\s*(?:readonly\s|static\s|const\s)*(?:(?!class)(?!interface)[\w<>]+)\s+(?:(?!set)\w+)(?:\s*=\s*(?:new\s*)?[\w<>\(\)\"\/\s/.]*)?(?=;|\s*\n*\{)",
         source_code)
     if fields:
         OUTPUT_JSON["Class Diagram"][namespace_index][namespace][
@@ -88,7 +91,7 @@ def scrape(filename: str, OUTPUT_JSON: dict[str, list[dict[str, list[dict[str, l
         field_and_method_counter += 1
 
     methods = findall(
-        r"(?:public\s|private\s|protected\s|internal\s)\s*[\s\w]*(?:\w+)\s*(?:<(?:[\w]*,\s?)*>)?\s*\(\s*(?:(?:ref\s|in\s|out\s)?\s*(?:[\w<>\[\]]+)\s+(?:\w+)\s*=?\s*[\w\"\'\[\]]+,?\n?\s*)*\)(?:\s*:\s*base\s*\((?:[\w\"\'\(\)]*,*\s*)*\))?",
+        r"(?:public\s|private\s|protected\s|internal\s)\s*[\s\w]*(?:[\w<>]+)\s*(?:<(?:[\w]*,\s?)*>)?\s*\(\s*(?:(?:ref\s|in\s|out\s)?\s*(?:[\w<>\[\]]+)\s+(?:\w+)\s*=?\s*[\w\"\'\[\]]+,?\n?\s*)*\)(?:\s*:\s*base\s*\((?:[\w\"\'\(\)]*,*\s*)*\))?",
         source_code)
     if methods:
         OUTPUT_JSON["Class Diagram"][namespace_index][namespace][
@@ -267,13 +270,13 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                     field_name: str
                                     field_type: str
                                     field_visibility: list[str]
-                                    field_static = "static" in field_signature
+                                    field_static = any(x in field_signature for x in ["static", "const"])
                                     field_default_value = ""
                                     field_modifiers = ""
 
                                     # Field name
                                     field_search = findall(
-                                        r"(?:(?:internal|public|protected|private|readonly|static|override)\s)*(?:([^\s]+)\s+([^\s]+))\s*(?:=\s*(.*))?",
+                                        r"(?:(?:internal|public|protected|private|readonly|static|override|const)\s)*(?:([^\s]+)\s+([^\s]+))\s*(?:=\s*(.*))?",
                                         field_signature)[0]
 
                                     field_name = field_search[1].strip(
@@ -307,7 +310,7 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                         for x
                                         in ["abstract", "virtual"])
                                     override = "override" in field_signature
-                                    readonly = "readonly" in field_signature
+                                    readonly = any(x in field_signature for x in ["readonly", "const"])
 
                                     property_modifier = []
                                     if abstract:
@@ -492,6 +495,7 @@ def main(
         "Class Diagram": []}
 
     for file in files:
+        print(file)
         OUTPUT_JSON = scrape(file, OUTPUT_JSON)
 
     if output_json:
@@ -510,6 +514,6 @@ def main(
 
 
 if __name__ == "__main__":
-    root = find_files(r".\\path\\to\\C#\\project")
+    root = find_files(r"")
 
     main(root, False, False, True)
