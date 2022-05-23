@@ -76,7 +76,7 @@ def scrape(filename: str, OUTPUT_JSON: dict[str, list[dict[str, list[dict[str, l
     field_and_method_counter = 0
 
     fields = findall(
-        r"(?:public\s|private\s|protected\s|internal\s)\s*(?:readonly\s|static\s|const\s)*(?:(?!class)(?!interface)[\w<>]+)\s+(?:(?!set)\w+)(?:\s*=\s*(?:new\s*)?[\w<>\(\)\"\/\s/.]*)?(?=;|\s*\n*\{)",
+        r"(?:public\s|private\s|protected\s|internal\s)\s*(?:readonly\s|static\s|const\s|new\s)*(?:(?!class)(?!interface)[\w<>]+)\s+(?:(?!set)\w+)(?:\s*=\s*(?:new\s*)?[\w<>\(\)\"\/\s.]*)?(?=;|\s*\n*\{)",
         source_code)
     if fields:
         OUTPUT_JSON["Class Diagram"][namespace_index][namespace][
@@ -181,6 +181,7 @@ def XML_value_field(field: list[str]) -> str:
 
 def XML_value_method(method: list[str]) -> str:
     value = "&lt;p style=&quot;margin-top:4px;margin-bottom:4px;margin-left:4px;&quot;&gt;"
+
     # method: [name:str, parameters:str, return_type:str, visibility:str, static:bool, modifiers:str]
     if method[4]:
         if method[2]:
@@ -196,6 +197,27 @@ def XML_value_method(method: list[str]) -> str:
     value += "&lt;/p&gt;"
     return value
 
+def parse_params(params: str) -> str:
+    if params == "":
+        return ""
+    comma_separated = params.split(',')
+    out = ""
+
+    for i, parameter in enumerate(comma_separated):
+        # print(parameter)
+        matches = findall(r"([\w&;\[\]\(\)\{\}]+) ([\w\d_]+)( = .*$)?", parameter)[0]
+        # print(matches)
+        param_type = matches[0]
+        param_identifier = matches[1]
+        
+        param_default = matches[2] if len(matches) == 3 else ""
+
+        if i == len(comma_separated) - 1:
+            out += f"{param_identifier}: {param_type}{param_default}"
+        else:
+            out += f"{param_identifier}: {param_type}{param_default}, "
+
+    return out
 
 def XML_element(element_id: int, parent_id: int, value: str,
                 x: int, y: int, width: int, height: int,
@@ -276,7 +298,7 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
 
                                     # Field name
                                     field_search = findall(
-                                        r"(?:(?:internal|public|protected|private|readonly|static|override|const)\s)*(?:([^\s]+)\s+([^\s]+))\s*(?:=\s*(.*))?",
+                                        r"(?:(?:internal|public|protected|private|readonly|static|override|const|new)\s)*(?:([^\s]+)\s+([^\s]+))\s*(?:=\s*(.*))?",
                                         field_signature)[0]
 
                                     field_name = field_search[1].strip(
@@ -321,7 +343,7 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                             "readOnly")
                                     if override:
                                         property_modifier.append(
-                                            "redefines")
+                                            f"redefines {field_name}")
 
                                     if property_modifier:
                                         field_modifiers = f"{{ {', '.join(property_modifier)} }}"
@@ -352,8 +374,6 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                     method_identifier = method_search[1].strip(
                                     )
 
-                                    print(method_identifier)
-
                                     method_identifier_split = method_identifier.split(
                                         "(", 1)
                                     method_name = escape(
@@ -363,11 +383,15 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                     method_parameters = escape(
                                         escape(method_identifier_split[1][:-1]))
 
+                                    method_parameters = parse_params(method_parameters)
+
                                     method_return_type = escape(
                                         escape(method_search[0].strip()))
 
                                     if method_return_type == "void" or method_name.startswith(class_name):
                                         method_return_type = ""
+
+                                    print(f"{method_name}({method_parameters})")
 
                                     # Method visibility
                                     v = []
@@ -390,7 +414,7 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                     property_modifier = []
                                     if override:
                                         property_modifier.append(
-                                            "redefines")
+                                            f"redefines {method_name}")
 
                                     if property_modifier:
                                         method_modifiers += f"{{ {', '.join(property_modifier)} }}"
@@ -495,7 +519,6 @@ def main(
         "Class Diagram": []}
 
     for file in files:
-        print(file)
         OUTPUT_JSON = scrape(file, OUTPUT_JSON)
 
     if output_json:
@@ -514,6 +537,6 @@ def main(
 
 
 if __name__ == "__main__":
-    root = find_files(r"")
+    root = find_files(r"C:\\Users\\tarang\\repos\\CAB201\Assessment\\Object Oriented Design and Implementation\src\AirlineManagement\AirlineManagement")
 
     main(root, False, False, True)
