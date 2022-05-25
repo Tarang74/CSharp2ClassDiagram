@@ -537,6 +537,6 @@ def main(
 
 
 if __name__ == "__main__":
-    root = find_files(r"C:\\Users\\tarang\\repos\\CAB201\Assessment\\Object Oriented Design and Implementation\src\AirlineManagement\AirlineManagement")
+    root = find_files(r"path\\to\\solution")
 
     main(root, False, False, True)
