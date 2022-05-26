@@ -51,7 +51,7 @@ def scrape(filename: str, OUTPUT_JSON: dict[str, list[dict[str, list[dict[str, l
     try:
         namespace = findall(r"namespace\s*([\w\.]+)", source_code)[0]
     except IndexError:
-        raise f"Could not find namespace in {filename}"
+        raise Exception(f"Could not find namespace in {filename}")
 
     if not any(namespace in d for d in OUTPUT_JSON["Class Diagram"]):
         OUTPUT_JSON["Class Diagram"].append({f"{namespace}": []})
@@ -64,7 +64,7 @@ def scrape(filename: str, OUTPUT_JSON: dict[str, list[dict[str, list[dict[str, l
             r"(?:internal\s|public\s|private\s)?(?:static\s|abstract\s|partial\s)?(?:class|interface)\s*(?:[\w\.]+)",
             source_code)[0]
     except IndexError:
-        raise f"Could not find class in {filename}"
+        raise Exception(f"Could not find class in {filename}")
 
     class_ = sub(r"\n", r" ", class_)
     class_ = sub(
