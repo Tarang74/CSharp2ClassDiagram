@@ -56,7 +56,7 @@ def scrape(filename: str, OUTPUT_JSON: dict[str, list[dict[str, list[dict[str, l
         OUTPUT_JSON["Class Diagram"], namespace)
 
     class_ = findall(
-        r"(?:internal\s|public\s)(?:static\s|abstract\s|partial\s)?(?:class|interface)\s(?:[\w\.]+)",
+        r"(?:internal\s|public\s)?(?:static\s|abstract\s|partial\s)?(?:class|interface)\s(?:[\w\.]+)",
         source_code)[0]
     class_ = sub(r"\n", r" ", class_)
     class_ = sub(
