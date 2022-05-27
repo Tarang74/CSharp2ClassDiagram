@@ -61,7 +61,7 @@ def scrape(filename: str, OUTPUT_JSON: dict[str, list[dict[str, list[dict[str, l
 
     try:
         class_ = findall(
-            r"(?:internal\s|public\s|private\s)?(?:static\s|abstract\s|partial\s)?(?:class|interface)\s*(?:[\w\.]+)",
+            r"(?:internal\s|public\s|private\s)(?:static\s|abstract\s|partial\s)?(?:class|interface)\s*(?:[\w\.]+)",
             source_code)[0]
     except IndexError:
         raise Exception(f"Could not find class in {filename}")
