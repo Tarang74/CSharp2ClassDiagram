@@ -30,13 +30,14 @@ def find_index(l: list[dict[str, list]], key: str) -> int:
 
 
 def find_files(directory: str) -> list[str]:
-    if not directory: 
+    if not directory:
         raise ValueError("No directory was supplied.")
 
     list_of_files = []
     for path, subdirs, files in walk(directory):
         for name in files:
-            if name.endswith(".cs") and not path.startswith(f"{directory}\obj"):
+            if name.endswith(".cs") and not path.startswith(
+                    f"{directory}\obj"):
                 list_of_files.append(f"{path}\{name}")
 
     return list_of_files
@@ -61,7 +62,7 @@ def scrape(filename: str, OUTPUT_JSON: dict[str, list[dict[str, list[dict[str, l
 
     try:
         class_ = findall(
-            r"(?:internal\s|public\s|private\s)(?:static\s|abstract\s|partial\s)?(?:class|interface)\s*(?:[\w\.]+)",
+            r"(?:internal\s|public\s|static\s|abstract\s|partial\s)*?(?:class|interface|enum)\s*(?:[\w]+)",
             source_code)[0]
     except IndexError:
         raise Exception(f"Could not find class in {filename}")
@@ -148,7 +149,7 @@ def convert_to_md(
 
 
 def XML_value_class(
-        title: str, interface: bool, abstract: bool, static: bool) -> str:
+        title: str, interface: bool, abstract: bool, static: bool, enumeration: bool) -> str:
     value = ""
 
     title_with_styles: str
@@ -164,7 +165,20 @@ def XML_value_class(
     if interface:
         value = f"&lt;p style=&quot;margin-top:4px;margin-bottom:4px;text-align:center;&quot;&gt; \
                 &lt;i&gt; \
-                    &amp;lt;&amp;lt;Interface&amp;gt;&amp;gt; \
+                    &amp;lt;&amp;lt;interface&amp;gt;&amp;gt; \
+                &lt;/i&gt; \
+                &lt;br&gt; \
+                &lt;b&gt;{title_with_styles}&lt;/b&gt; \
+            &lt;/p&gt;"
+    else:
+        value = f"&lt;p style=&quot;margin-top:4px;margin-bottom:4px;text-align:center;&quot;&gt; \
+                &lt;b&gt;{title_with_styles}&lt;/b&gt; \
+            &lt;/p&gt;"
+    
+    if enumeration:
+        value = f"&lt;p style=&quot;margin-top:4px;margin-bottom:4px;text-align:center;&quot;&gt; \
+                &lt;i&gt; \
+                    &amp;lt;&amp;lt;enumeration&amp;gt;&amp;gt; \
                 &lt;/i&gt; \
                 &lt;br&gt; \
                 &lt;b&gt;{title_with_styles}&lt;/b&gt; \
@@ -205,6 +219,7 @@ def XML_value_method(method: list[str]) -> str:
     value += "&lt;/p&gt;"
     return value
 
+
 def parse_params(params: str) -> str:
     if params == "":
         return ""
@@ -213,11 +228,12 @@ def parse_params(params: str) -> str:
 
     for i, parameter in enumerate(comma_separated):
         # print(parameter)
-        matches = findall(r"([\w&;\[\]\(\)\{\}]+) ([\w\d_]+)( = .*$)?", parameter)[0]
+        matches = findall(
+            r"([\w&;\[\]\(\)\{\}]+) ([\w\d_]+)( = .*$)?", parameter)[0]
         # print(matches)
         param_type = matches[0]
         param_identifier = matches[1]
-        
+
         param_default = matches[2] if len(matches) == 3 else ""
 
         if i == len(comma_separated) - 1:
@@ -226,6 +242,7 @@ def parse_params(params: str) -> str:
             out += f"{param_identifier}: {param_type}{param_default}, "
 
     return out
+
 
 def XML_element(element_id: int, parent_id: int, value: str,
                 x: int, y: int, width: int, height: int,
@@ -282,6 +299,7 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                     # Class/interface info
                     class_name = class_key.split()[-1]
                     is_interface = "interface" in class_key
+                    is_enumeration = "enum" in class_key
                     is_static = "static" in class_key
                     is_abstract = "abstract" in class_key
 
@@ -300,7 +318,14 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                     field_name: str
                                     field_type: str
                                     field_visibility: list[str]
-                                    field_static = any(x in field_signature for x in ["static", "const"])
+                                    field_static = any(
+                                        x
+                                        in
+                                        field_signature
+                                        for x
+                                        in
+                                        ["static",
+                                         "const"])
                                     field_default_value = ""
                                     field_modifiers = ""
 
@@ -325,7 +350,8 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
 
                                     # Escape any additional <>
                                     field_type = escape(field_type)
-                                    field_default_value = escape(field_default_value)
+                                    field_default_value = escape(
+                                        field_default_value)
 
                                     # Field visibility
                                     v = []
@@ -344,7 +370,10 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                         for x
                                         in ["abstract", "virtual"])
                                     override = "override" in field_signature
-                                    readonly = any(x in field_signature for x in ["readonly", "const"])
+                                    readonly = any(
+                                        x in field_signature
+                                        for x in
+                                        ["readonly", "const"])
 
                                     property_modifier = []
                                     if abstract:
@@ -395,7 +424,8 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                     method_parameters = escape(
                                         escape(method_identifier_split[1][:-1]))
 
-                                    method_parameters = parse_params(method_parameters)
+                                    method_parameters = parse_params(
+                                        method_parameters)
 
                                     method_return_type = escape(
                                         escape(method_search[0].strip()))
@@ -403,7 +433,8 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
                                     if method_return_type == "void" or method_name.startswith(class_name):
                                         method_return_type = ""
 
-                                    print(f"{method_name}({method_parameters})")
+                                    print(
+                                        f"{method_name}({method_parameters})")
 
                                     # Method visibility
                                     v = []
@@ -464,9 +495,9 @@ def convert_to_XML(OUTPUT_JSON: dict[str, list[
 
                     # Class/interface
                     value_class = XML_value_class(
-                        class_name, is_interface, is_abstract, is_static)
+                        class_name, is_interface, is_abstract, is_static, is_enumeration)
 
-                    if is_interface:
+                    if is_interface or is_enumeration:
                         style_class = "swimlane;childLayout=stackLayout;horizontal=1;startSize=36;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;"
                     else:
                         style_class = "swimlane;childLayout=stackLayout;horizontal=1;startSize=22;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;"
